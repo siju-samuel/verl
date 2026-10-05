@@ -286,7 +286,13 @@ class SGLangHttpServer:
 
             if LOADER_FQN not in custom_weight_loader:
                 custom_weight_loader.append(LOADER_FQN)
-        if attention_backend is None:
+        # aiter/flashinfer/fa3 are CUDA and ROCm kernels (PlatformROCm keeps
+        # device_name "cuda"). On any other platform leave the backend unset so
+        # SGLang picks its own device default -- triton on XPU, where naming a CUDA
+        # backend instead fails engine startup. Device-specific backends stay
+        # opt-in through engine_kwargs: Intel's intel_xpu, for one, also needs
+        # page_size in {32, 64, 128}.
+        if attention_backend is None and get_platform().device_name == "cuda":
             if torch.version.hip is not None:
                 attention_backend = "aiter"
             elif version.parse(sglang.__version__) >= version.parse("0.5.12"):
